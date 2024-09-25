@@ -10,7 +10,9 @@ in_embs = data['embs'][:4000]
 out_embs = data['embs'][4000:8000]
 
 in_targets = data['targets'][:4000]
+in_labels = np.unique(in_targets)
 out_targets = data['targets'][4000:8000]
+out_labels = np.unique(out_targets)
 
 #center_targets = np.array([i for i in range(6)]).reshape(6, )
 #targets = np.concatenate([targets, center_targets], axis=0)[:5000]
@@ -37,12 +39,18 @@ df["comp-2"] = X_2d[:,1]
 #sns.scatterplot(x="comp-1", y="comp-2", hue=df.y.tolist(),
 #                palette=sns.color_palette("hls", 7),
 #                data=df).set(title="Iris data T-SNE projection") 
-sc = plt.scatter(x=X_2d[:, 0], y=X_2d[:, 1], c=targets)
-plt.colorbar(sc)
 
-import tikzplotlib
+for c in np.unique(targets):
+    if c not in in_labels:
+        plt.scatter(x=X_2d[targets==c, 0], y=X_2d[targets==c, 1], s = 0.1, label = 'Out', c = 'black')
+    else:
+        plt.scatter(x=X_2d[targets==c, 0], y=X_2d[targets==c, 1], s = 0.1, label = c)
+plt.legend()
+#plt.colorbar(sc)
 
-tikzplotlib.Flavors.latex.preamble()
+#import tikzplotlib 
+
+#tikzplotlib.Flavors.latex.preamble()
 #tikzplotlib.clean_figure()
-tikzplotlib.save("test.tex")
+#tikzplotlib.save("test.tex")
 plt.savefig('demo.png')
