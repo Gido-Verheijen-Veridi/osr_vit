@@ -31,6 +31,7 @@ def train_epoch(epoch, model, data_loader, criterion, optimizer, lr_scheduler, m
 
     # training loop
     for batch_idx, (batch_data, batch_target) in enumerate(tqdm(data_loader)):
+        batch_target = batch_target.type(torch.LongTensor)
         batch_data = batch_data.to(device)
         batch_target = batch_target.to(device)
 
@@ -57,6 +58,7 @@ def valid_epoch(epoch, model, data_loader, criterion, metrics, classes_mean, dev
     # validation loop
     with torch.no_grad():
         for batch_idx, (batch_data, batch_target) in enumerate(tqdm(data_loader)):
+            batch_target = batch_target.type(torch.LongTensor)
             batch_data = batch_data.to(device)
             batch_target = batch_target.to(device)
 
