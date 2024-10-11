@@ -6,12 +6,13 @@ import matplotlib.pyplot as plt
 from sklearn.manifold import TSNE
 
 data = np.load("./data.npz")
-in_embs = data['embs'][:4000]
-out_embs = data['embs'][4000:8000]
+d = data['embs'][:-2]
+in_embs = d[data['targets'] != 2]
+out_embs = d[data['targets'] == 2]
 
-in_targets = data['targets'][:4000]
+in_targets = data['targets'][data['targets'] != 2]
 in_labels = np.unique(in_targets)
-out_targets = data['targets'][4000:8000]
+out_targets = data['targets'][data['targets'] == 2]
 out_labels = np.unique(out_targets)
 
 #center_targets = np.array([i for i in range(6)]).reshape(6, )
@@ -23,18 +24,18 @@ targets = np.concatenate([out_targets, in_targets], axis=0)
 
 #X_2d = TSNE().fit_transform(embs)
 #X_2d = TSNE(perplexity=64.0, learning_rate=270).fit_transform(embs)
-X_2d = TSNE(n_components=2, learning_rate='auto', early_exaggeration = 12, init='pca', perplexity=20, n_iter=10000).fit_transform(embs)
+#X_2d = TSNE(n_components=2, learning_rate='auto', early_exaggeration = 12, init='pca', perplexity=20, n_iter=10000).fit_transform(embs)
 
-X_2d = X_2d[3200:]
-targets[:4000] = 6
-targets = targets[3200:]
+X_2d = embs
+#targets[:200] = 2
+targets = targets
 print(X_2d.shape, targets.shape)
 
 df = pd.DataFrame()
 df["y"] = targets
 df["comp-1"] = X_2d[:,0]
 df["comp-2"] = X_2d[:,1]
-
+print(df.head())
 
 #sns.scatterplot(x="comp-1", y="comp-2", hue=df.y.tolist(),
 #                palette=sns.color_palette("hls", 7),
@@ -42,9 +43,9 @@ df["comp-2"] = X_2d[:,1]
 
 for c in np.unique(targets):
     if c not in in_labels:
-        plt.scatter(x=X_2d[targets==c, 0], y=X_2d[targets==c, 1], s = 0.1, label = 'Out', c = 'black')
+        plt.scatter(x=X_2d[targets==c, 0], y=X_2d[targets==c, 1], label = 'Out', c = 'black')
     else:
-        plt.scatter(x=X_2d[targets==c, 0], y=X_2d[targets==c, 1], s = 0.1, label = c)
+        plt.scatter(x=X_2d[targets==c, 0], y=X_2d[targets==c, 1], label = c)
 plt.legend()
 #plt.colorbar(sc)
 

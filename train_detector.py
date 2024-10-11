@@ -9,13 +9,14 @@ from src.utils import setup_device, TensorboardWriter, MetricTracker, load_check
 import random
 from src.dataset import *
 import os
+from src.nematode_dataset import *
 
 def run_model(model, loader):
     #run the resnet model
     total = 0
     out_list = []
     tgt_list = []
-    for images, target in loader:
+    for images, target in tqdm(loader, leave = False):
         total += images.size(0)
         images = images.cuda()
         with torch.no_grad():
@@ -142,25 +143,18 @@ def main(config, device, device_ids):
 
     model.cls_token.requires_grad = False
 
-    if config.dataset == 'CUB':
-        total_classes = 200
-        import pickle
-        with open("src/cub_osr_splits.pkl", "rb") as f:
-            splits = pickle.load(f)
-            known_classes = splits['known_classes']
-    else:
-        if config.dataset == "MNIST" or config.dataset == "SVHN" or config.dataset == "CIFAR10":
-            total_classes = 10
-        elif config.dataset == "TinyImageNet":
-            total_classes = 200
+    if config.dataset == "Nematode":
+        total_classes = 3
+        known_classes = [0,1]
+    
+    train_dataloader, valid_dataloader, _ = make_loaders(r'D:\Veridi\Images', config.batch_size, config.image_size, config.random_seed)
+    print("Loaded training data")
+        
 
-        random.seed(config.random_seed)
-        known_classes = random.sample(range(0, total_classes), config.num_classes)
-
-    train_dataset = eval("get{}Dataset".format(config.dataset))(image_size=config.image_size, split='train', data_path=config.data_dir, known_classes=known_classes)
-    train_dataloader = DataLoader(train_dataset, batch_size=config.batch_size, shuffle=True, num_workers=config.num_workers)
-    valid_dataset = eval("get{}Dataset".format(config.dataset))(image_size=config.image_size, split='in_test', data_path=config.data_dir, known_classes=known_classes)
-    valid_dataloader = DataLoader(valid_dataset, batch_size=config.batch_size, shuffle=True, num_workers=config.num_workers)
+    #train_dataset = eval("get{}Dataset".format(config.dataset))(image_size=config.image_size, split='train', data_path=config.data_dir, known_classes=known_classes)
+    #train_dataloader = DataLoader(train_dataset, batch_size=config.batch_size, shuffle=True, num_workers=config.num_workers)
+    ##valid_dataset = eval("get{}Dataset".format(config.dataset))(image_size=config.image_size, split='in_test', data_path=config.data_dir, known_classes=known_classes)
+    #valid_dataloader = DataLoader(valid_dataset, batch_size=config.batch_size, shuffle=True, num_workers=config.num_workers)
 
     # send model to device
     model = model.to(device)

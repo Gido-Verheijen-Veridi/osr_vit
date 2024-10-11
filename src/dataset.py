@@ -8,6 +8,48 @@ import pandas as pd
 from torchvision.datasets.folder import default_loader
 import pickle
 
+def getDTDDataset(data_path='./data', **args):
+    mean = (0.4914, 0.4822, 0.4465)
+    std = (0.2023, 0.1994, 0.2010)
+        
+    transform = transforms.Compose([
+        transforms.Resize((args['image_size'], args['image_size'])),
+        transforms.ToTensor(),
+        transforms.Normalize(mean, std),
+    ])
+
+    split = args['split']
+    splt = 'train' if split == 'train' else 'val'
+
+    data_split = True if split=='train' else False
+    dataset = datasets.DTD(data_path, download=True, split=splt, transform=transform)
+
+    if 'known_classes' in args:
+        known_classes = sorted(args['known_classes'])
+        known_mapping = {val:idx for idx, val in enumerate(known_classes)}
+        unknown_classes =  list(set(range(40)) -  set(known_classes))
+        unknown_classes = sorted(unknown_classes)
+        unknown_mapping = {val: idx+len(known_classes) for idx, val in enumerate(unknown_classes)}
+
+        classes = known_classes if split=='train' or split=='in_test' else unknown_classes
+        mapping = known_mapping if split=='train' or split=='in_test' else unknown_mapping
+
+        dataset._labels = np.array(dataset._labels)
+        dataset._image_files = np.array(dataset._image_files)
+
+        idx = None
+        for i in classes:
+            if idx is None:
+                idx = (dataset._labels==i)
+            else:
+                idx |= (dataset._labels==i)
+        dataset._labels = dataset._labels[idx]
+        dataset._image_files = dataset._image_files[idx]
+        for idx, val in enumerate(dataset._labels):
+            dataset._labels[idx] = torch.tensor(mapping[val.item()])
+    return dataset
+
+
 
 def getMNISTDataset(data_path='./data', **args):
     mean = (0.5, 0.5, 0.5)
@@ -404,12 +446,8 @@ def get_mean_and_std(dataloader):
 
 if __name__ == '__main__':
     from torch.utils.data import DataLoader
-    import pickle
-    with open("src/aircraft_osr_splits.pkl", 'rb') as f:
-        splits = pickle.load(f)
-        print(len(splits['known_classes']))
     
-    dataset = getFGVCDataset(image_size=448, split='train')#, known_classes=splits['known_classes'])
+    dataset = getDTDDataset(image_size=128, split='train', known_classes=[0,1,2,3])
     print(len(dataset))
     loader = DataLoader(dataset, batch_size=10, shuffle=True)
     mean, std = get_mean_and_std(loader)

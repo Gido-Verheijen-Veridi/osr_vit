@@ -5,6 +5,7 @@ from tqdm import tqdm
 import numpy as np
 from src.config import get_train_config
 from src.utils import setup_device, TensorboardWriter, MetricTracker, load_checkpoint, write_json, accuracy
+from src.nematode_dataset import *
 import random
 from src.dataset import *
 import os
@@ -32,7 +33,7 @@ def train_epoch(epoch, model, data_loader, criterion, optimizer, lr_scheduler, m
         metrics.update('loss', loss.item())
 
         if  batch_idx % 100 == 10:
-            if config.num_classes >= 5:
+            if config.num_classes >= 6:
                 acc1, acc5 = accuracy(batch_pred, batch_target, topk=(1, 5))
                 metrics.update('acc1', acc1.item())
                 metrics.update('acc5', acc5.item())        
@@ -58,7 +59,7 @@ def valid_epoch(epoch, model, data_loader, criterion, metrics, device=torch.devi
             batch_pred = model(batch_data)
             loss = criterion(batch_pred, batch_target)
             losses.append(loss.item())
-            if config.num_classes >= 5:
+            if config.num_classes >= 6:
                 acc1, acc5 = accuracy(batch_pred, batch_target, topk=(1, 5))
                 acc1s.append(acc1.item())
                 acc5s.append(acc5.item())
@@ -146,23 +147,12 @@ def main(config, device, device_ids):
 
     # create dataloader
     config.model = 'vit'
-    if config.dataset == "CUB":
-        total_classes = 200
-        import pickle
-        with open("src/cub_osr_splits.pkl", "rb") as f:
-            splits = pickle.load(f)
-            known_classes = splits['known_classes']
-    else:
-        random.seed(config.random_seed)
-        if config.dataset == "MNIST" or config.dataset == "SVHN" or config.dataset == "CIFAR10":
-            total_classes = 10
-        elif config.dataset == "TinyImageNet":
-            total_classes = 200
-        known_classes = random.sample(range(0, total_classes), config.num_classes)
-    train_dataset = eval("get{}Dataset".format(config.dataset))(image_size=config.image_size, split='train', data_path=config.data_dir, known_classes=known_classes)
-    train_dataloader = DataLoader(train_dataset, batch_size=config.batch_size, shuffle=True, num_workers=config.num_workers)
-    valid_dataset = eval("get{}Dataset".format(config.dataset))(image_size=config.image_size, split='in_test', data_path=config.data_dir, known_classes=known_classes)
-    valid_dataloader = DataLoader(valid_dataset, batch_size=config.batch_size, shuffle=True, num_workers=config.num_workers)
+    if config.dataset == "Nematode":
+        total_classes = 3
+        known_classes = [0,1]
+    
+    train_dataloader, valid_dataloader, _ = make_loaders(r'D:\Veridi\Images', config.batch_size, config.image_size, config.random_seed)
+
 
     # training criterion
     print("create criterion and optimizer")

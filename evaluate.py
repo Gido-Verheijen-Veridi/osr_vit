@@ -16,7 +16,7 @@ def parse_option():
     parser.add_argument("--data-dir", type=str, default='./data', help='data folder')
     parser.add_argument('--gpu', type=int, default=0, help='gpu index')
     parser.add_argument("--num-workers", type=int, default=8, help="number of workers")
-    parser.add_argument("--image-size", type=int, default=224, help="input image size", choices=[128, 160, 224, 384])
+    parser.add_argument("--image-size", type=int, default=224, help="input image size", choices=[128, 160, 224, 384, 512])
 
     opt = parser.parse_args()
 

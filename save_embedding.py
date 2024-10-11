@@ -10,20 +10,22 @@ from src.dataset import *
 from torch.nn import functional as F
 import sklearn.metrics as skm
 from src.utils import write_json
+from src.nematode_dataset import *
+from tqdm import tqdm
 
 def parse_option():
     parser = argparse.ArgumentParser(description='PyTorch code: Mahalanobis detector')
 
     parser.add_argument("--exp-name", type=str, default="ft", help="experiment name")
-    parser.add_argument('--batch_size', type=int, default=64, metavar='N', help='batch size for data loader')
+    parser.add_argument('--batch_size', type=int, default=4, metavar='N', help='batch size for data loader')
     parser.add_argument('--in-dataset', default='cifar10', required=False, help='cifar10 | cifar100 | stl10 | ImageNet30')
-    parser.add_argument("--in-num-classes", type=int, default=1000, help="number of classes in dataset")
+    parser.add_argument("--in-num-classes", type=int, default=2, help="number of classes in dataset")
     parser.add_argument('--out-dataset', default='cifar10', required=False, help='cifar10 | cifar100 | stl10 | ImageNet30')
-    parser.add_argument("--out-num-classes", type=int, default=1000, help="number of classes in dataset")
+    parser.add_argument("--out-num-classes", type=int, default=2, help="number of classes in dataset")
     parser.add_argument("--data-dir", type=str, default='./data', help='data folder')
     parser.add_argument('--gpu', type=int, default=0, help='gpu index')
     parser.add_argument("--num-workers", type=int, default=8, help="number of workers")
-    parser.add_argument("--image-size", type=int, default=224, help="input image size", choices=[128, 160, 224, 384, 448])
+    parser.add_argument("--image-size", type=int, default=512, help="input image size", choices=[128, 160, 224, 384, 448, 512])
 
     opt = parser.parse_args()
 
@@ -35,7 +37,7 @@ def run_model(model, loader, softmax=False):
     out_list = []
     tgt_list = []
     cls_list = []
-    for images, target in loader:
+    for images, target in tqdm(loader):
         total += images.size(0)
         images = images.cuda()
         output, classifier = model(images,feat_cls=True)
@@ -91,56 +93,7 @@ def main(opt, model):
 
     # load ID dataset
     print('load in target data: ', opt.in_dataset)
-    if opt.in_dataset == "CUB":
-        import pickle
-        with open("src/cub_osr_splits.pkl", "rb") as f:
-            splits = pickle.load(f)
-            known_classes = splits['known_classes']
-            train_dataset = eval("get{}Dataset".format(opt.in_dataset))(image_size=opt.image_size, split='train', data_path=opt.data_dir, known_classes=known_classes)
-            in_dataset = eval("get{}Dataset".format(opt.in_dataset))(image_size=opt.image_size, split='in_test', data_path=opt.data_dir, known_classes=known_classes)
-
-            unknown_classes = splits['unknown_classes'][opt.mode]
-            out_dataset = eval("get{}Dataset".format(opt.in_dataset))(image_size=opt.image_size, split='in_test', data_path=opt.data_dir, known_classes=unknown_classes)
-    
-    else:
-        random.seed(opt.random_seed)
-        if opt.in_dataset == "MNIST" or opt.in_dataset == "SVHN" or opt.in_dataset == "CIFAR10":
-            total_classes = 10
-        elif opt.in_dataset == "CIFAR100":
-            total_classes = 100
-        elif opt.in_dataset == "TinyImageNet":
-            total_classes = 200
-
-        known_classes = random.sample(range(0, total_classes), opt.in_num_classes)
-
-        in_dataset = eval("get{}Dataset".format(opt.in_dataset))(image_size=opt.image_size, split='in_test', data_path=opt.data_dir, known_classes=known_classes)
-
-        # load OOD dataset
-        print('load out target data: ', opt.out_dataset)
-        if opt.in_dataset == opt.out_dataset:
-            unknown_classes =  list(set(range(total_classes)) -  set(known_classes))
-            out_dataset = eval("get{}Dataset".format(opt.in_dataset))(image_size=opt.image_size, split='out_test', data_path=opt.data_dir, known_classes=known_classes)
-        else:
-            random.seed(opt.random_seed)
-            if opt.out_dataset == "MNIST" or opt.out_dataset == "CIFAR10":
-                out_total_classes = 10
-            elif opt.out_dataset == "CIFAR100":
-                out_total_classes = 100
-            elif opt.out_dataset == "TinyImageNet":
-                out_total_classes = 200
-            unknown_classes = random.sample(range(0, out_total_classes), opt.out_num_classes)
-            out_dataset = eval("get{}Dataset".format(opt.out_dataset))(image_size=opt.image_size, split='in_test', data_path=opt.data_dir, known_classes=unknown_classes)
-
-    test_data_len = min(len(in_dataset), len(out_dataset))
-    random.seed(opt.random_seed)
-    in_index = random.sample(range(len(in_dataset)), test_data_len)
-    in_dataset = torch.utils.data.Subset(in_dataset, in_index)
-    random.seed(opt.random_seed)
-    out_index = random.sample(range(len(out_dataset)), test_data_len)
-    out_dataset = torch.utils.data.Subset(out_dataset, out_index)
-
-    in_dataloader = DataLoader(in_dataset, batch_size=opt.batch_size, shuffle=True, num_workers=opt.num_workers)
-    out_dataloader = DataLoader(out_dataset, batch_size=opt.batch_size, shuffle=True, num_workers=opt.num_workers)
+    train_dataloader, in_dataloader, out_dataloader = make_loaders(r'D:\Veridi\Images', opt.batch_size, opt.image_size, opt.random_seed)
 
 
     in_emb, in_targets, in_sfmx = run_model(model,in_dataloader)
